@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>PC Radar | Meu PC Gamer</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b1120;color:#f1f5f9;font-family:system-ui,-apple-system,Arial}
+header{background:#111c30;padding:24px 18px;border-bottom:1px solid #26364e}
+.wrap{max-width:850px;margin:auto}
+h1{font-size:27px;margin:0}
+h2{font-size:19px}
+.sub{color:#94a3b8;font-size:13px}
+main{padding:18px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}
+.stat,.card{background:#172338;border:1px solid #304159;border-radius:15px;padding:15px}
+.stat small{color:#a7b5ca}
+.stat strong{display:block;font-size:21px;margin-top:7px}
+.card{margin-bottom:12px}
+.name{font-size:16px;font-weight:700}
+.tag{font-size:12px;color:#93c5fd}
+.price{font-size:22px;font-weight:800;color:#4ade80;margin:12px 0}
+button,.btn{border:0;border-radius:9px;padding:11px 13px;background:#2563eb;color:white;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;font-size:13px}
+.secondary{background:#334155}
+.green{background:#15803d}
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+input{background:#0b1425;border:1px solid #475569;border-radius:8px;padding:11px;color:white;width:100%;font-size:16px;margin:7px 0}
+.bought{border-color:#15803d}
+.bought .tag{color:#4ade80}
+.note{font-size:12px;color:#94a3b8;line-height:1.6}
+footer{text-align:center;padding:30px;color:#94a3b8;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<h1>⚡ PC Radar</h1>
+<p class="sub">Meu monitor de preços • PC Gamer</p>
+</div>
+</header>
+<main class="wrap">
+<div class="stats">
+<div class="stat">
+<small>Menor total registrado</small>
+<strong id="total">R$ 0</strong>
+</div>
+<div class="stat">
+<small>Peças compradas</small>
+<strong id="count">0/8</strong>
+</div>
+<div class="stat">
+<small>Falta comprar</small>
+<strong id="remaining">R$ 0</strong>
+</div>
+<div class="stat">
+<small>Orçamento restante</small>
+<strong id="budget">R$ 0</strong>
+</div>
+</div>
+<h2>🔎 Minhas peças</h2>
+<div id="items"></div>
+<p class="note">
+Os preços são registrados manualmente.
+O site não consulta lojas automaticamente nesta versão.
+Os dados ficam salvos neste navegador.
+</p>
+</main>
+<footer>PC Radar • Monitor pessoal</footer>
+<script>
+const parts=[
+["Processador","Ryzen 7 9800X3D",true],
+["Placa de vídeo","GALAX RTX 5060 Ti 16GB",false],
+["Placa-mãe","ASUS TUF Gaming B650M-E WiFi",false],
+["Memória RAM","32GB DDR5 6000MHz",false],
+["SSD","Kingston NV3 1TB",false],
+["Refrigeração","Water Cooler 360mm",false],
+["Fonte","XPG Core Reactor",false],
+["Gabinete","Gabinete Gamer",false]
+];
+const key="pcradar_v1";
+let saved={};
+try{saved=JSON.parse(localStorage.getItem(key))||{}}
+catch(e){}
+let data=parts.map((p,i)=>({
+category:p[0],name:p[1],
+bought:saved[i]?.bought??p[2],
+price:Number(saved[i]?.price)||0,
+url:saved[i]?.url||""
+}));
+const money=n=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const safe=s=>String(s).replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",
+'"':"&quot;","'":"&#39;"
+})[c]);
+function save(){
+localStorage.setItem(key,JSON.stringify(data))
+}
+function render(){
+let total=data.reduce((s,p)=>s+p.price,0);
+let remaining=data.reduce((s,p)=>s+(p.bought?0:p.price),0);
+let bought=data.filter(p=>p.bought).length;
+document.getElementById("total").textContent=money(total);
+document.getElementById("remaining").textContent=money(remaining);
+document.getElementById("count").textContent=bought+"/8";
+document.getElementById("budget").textContent=money(15000-remaining);
+document.getElementById("items").innerHTML=data.map((p,i)=>`
+<section class="card ${p.bought?"bought":""}">
+<div class="tag">${safe(p.category)} • ${p.bought?"COMPRADO":"PENDENTE"}</div>
+<div class="name">${safe(p.name)}</div>
+<div class="price">${p.price?money(p.price):"Preço não registrado"}</div>
+<div class="actions">
+<button onclick="editPrice(${i})">💰 Registrar preço</button>
+<button class="secondary" onclick="searchPart(${i})">🔎 Buscar ofertas</button>
+<button class="${p.bought?"secondary":"green"}" onclick="toggle(${i})">${p.bought?"Desmarcar":"Marcar comprado"}</button>
+</div>
+${p.url?`<p><a class="btn secondary" href="${safe(p.url)}" target="_blank" rel="noopener noreferrer">Abrir oferta ↗</a></p>`:""}
+</section>`).join("");
+}
+function editPrice(i){
+let p=data[i];
+let v=prompt("Preço em reais para "+p.name,p.price||"");
+if(v===null)return;
+v=v.trim().replace(/\s/g,"");
+if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");
+let n=Number(v);
+if(!Number.isFinite(n)||n<0){alert("Preço inválido");return}
+let url=prompt("Link da oferta (opcional)",p.url);
+if(url===null)return;
+url=url.trim();
+if(url&&!/^https:\/\/[^ ]+$/i.test(url)){
+alert("Use um link HTTPS válido");return
+}
+p.price=n;p.url=url;save();render();
+}
+function toggle(i){
+data[i].bought=!data[i].bought;
+save();render()
+}
+function searchPart(i){
+let q=encodeURIComponent(data[i].name);
+window.open("https://www.google.com/search?q="+q+"+preço+Kabum+Pichau+Terabyte","_blank","noopener");
+}
+render();
+</script>
+</body>
+</html>
